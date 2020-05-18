@@ -19,13 +19,13 @@ contract Plurality is Ownable {
     uint256 private _totalSupply;
     string private _name = "xx";
     string private _symbol = "xx";
-    uint8 private _decimals = 4;
+    uint8 private _decimals = 0;
 
     mapping (address => uint256) private _balances;
     mapping (address => mapping (address => uint256)) private _allowed;
 
-    mapping (address => bool) public members;
-    uint256 public membersCount;
+    // mapping (address => bool) public members;
+    // uint256 public membersCount;
     
     mapping (uint256 => mapping(address => bool)) public votes;
     Proposal[] public proposals;
@@ -37,6 +37,7 @@ contract Plurality is Ownable {
     function symbol() public view returns (string memory) {
         return _symbol;
     }
+
     function decimals() public view returns (uint8) {
         return _decimals;
     }
@@ -45,10 +46,14 @@ contract Plurality is Ownable {
         return _totalSupply;
     }
 
-    constructor() public {
-        membersCount = 1;
+    // function isMember(address who) public view returns (bool) {
+    //     return members[who];
+    // }
 
+    constructor() public {
+        //membersCount = 1;
         _totalSupply = 1000;
+        _balances[msg.sender] = 1000;
     }
 
     function balanceOf(address who) public view returns (uint256) {
@@ -95,18 +100,29 @@ contract Plurality is Ownable {
         return true;
     }
 
+    function grant(address who, uint256 tokens) public onlyOwner() {
+        _balances[who] = _balances[who].add(tokens);
+    }
+
+    function revoke(address who, uint256 tokens) public onlyOwner() {
+        _balances[who] = _balances[who].sub(tokens);
+    }
+
     function canVote(uint index) public view returns (bool) {
         return proposals[index].expires > now;
     }
 
-    function addProposal(string memory issue) public onlyMembers() returns(uint256) {
+    function addProposal(string memory issue) public returns(uint256) {
+        require(balanceOf(msg.sender) >= 1, "Need at least one token");
+
+        _balances[msg.sender] = _balances[msg.sender].sub(1);
         Proposal memory proposal = Proposal(issue, msg.sender, now + 48 hours, 0, 0, 1, 1);
         proposals.push(proposal);
 
         return proposals.length;
     }
 
-    function vote(uint256 index, bool accept, uint256 amount) public onlyMembers() {
+    function vote(uint256 index, bool accept, uint256 amount) public {
         //require(proposals[index].who == msg.sender, "Cannot approve own proposal");
         require(balanceOf(msg.sender) >= amount, "Need more tokens");
         require(canVote(index), "Proposal closed for voting");
@@ -123,31 +139,30 @@ contract Plurality is Ownable {
                 proposals[index].reject = proposals[index].accept.add(amount);
             }
             
-            
             emit Vote(index);
             emit Transfer(msg.sender, address(0), amount);
         }
     }
 
-    function updateMember(address who, bool isMember) public onlyOwner() {
-        require(who != address(0), "Invalid address");
+    // function updateMember(address who, bool isMember) public onlyOwner() {
+    //     require(who != address(0), "Invalid address");
 
-        //change state
-        if (members[who] != isMember) {
-            if (isMember == true) {
-                membersCount = membersCount.add(1);
-            } else {
-                membersCount = membersCount.sub(1);
-            }
-        }
+    //     //change state
+    //     if (members[who] != isMember) {
+    //         if (isMember == true) {
+    //             membersCount = membersCount.add(1);
+    //         } else {
+    //             membersCount = membersCount.sub(1);
+    //         }
+    //     }
 
-        members[who] = isMember;
-    }
+    //     members[who] = isMember;
+    // }
 
-    modifier onlyMembers() {
-        require(members[msg.sender] == true, "Sender is not a member");
-        _;
-    }
+    // modifier onlyMembers() {
+    //     require(members[msg.sender] == true, "Sender is not a member");
+    //     _;
+    // }
 
     event Vote(uint256 index);
     event Transfer(address indexed from, address indexed to, uint256 value);
