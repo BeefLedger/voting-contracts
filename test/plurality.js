@@ -75,5 +75,14 @@ contract("Plurality", async (accounts) => {
       const actual = await contractInstance.canVote(0)
       assert.equal(actual, true, "Proposal should be in vote period");
     });
+
+    it("should be able to vote", async () => {
+      await contractInstance.grant(ALICE, 100);
+      await contractInstance.addProposal("All the cows are brown");
+      await contractInstance.proposals(0);
+
+      contractInstance.canVote(0);
+      assert.equal(actual, true, "Proposal should be in vote period");
+    });
   });
 });

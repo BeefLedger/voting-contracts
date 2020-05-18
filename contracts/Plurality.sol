@@ -123,7 +123,7 @@ contract Plurality is Ownable {
     }
 
     function vote(uint256 index, bool accept, uint256 amount) public {
-        //require(proposals[index].who == msg.sender, "Cannot approve own proposal");
+        require(proposals[index].who != msg.sender, "Cannot approve own proposal");
         require(balanceOf(msg.sender) >= amount, "Need more tokens");
         require(canVote(index), "Proposal closed for voting");
         require(amount >= proposals[index].min && proposals[index].max >= amount, "Amount outside the bounds.");
