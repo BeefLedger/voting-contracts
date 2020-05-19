@@ -24,9 +24,6 @@ contract Plurality is Ownable {
     mapping (address => uint256) private _balances;
     mapping (address => mapping (address => uint256)) private _allowed;
 
-    // mapping (address => bool) public members;
-    // uint256 public membersCount;
-    
     mapping (uint256 => mapping(address => bool)) public votes;
     Proposal[] public proposals;
 
@@ -46,12 +43,7 @@ contract Plurality is Ownable {
         return _totalSupply;
     }
 
-    // function isMember(address who) public view returns (bool) {
-    //     return members[who];
-    // }
-
     constructor() public {
-        //membersCount = 1;
         _totalSupply = 1000;
         _balances[msg.sender] = 1000;
     }
@@ -109,6 +101,7 @@ contract Plurality is Ownable {
     }
 
     function canVote(uint index) public view returns (bool) {
+        require(votes[index][msg.sender] != true, "Cannot vote twice");
         return proposals[index].expires > now;
     }
 
@@ -128,41 +121,19 @@ contract Plurality is Ownable {
         require(canVote(index), "Proposal closed for voting");
         require(amount >= proposals[index].min && proposals[index].max >= amount, "Amount outside the bounds.");
 
-        if (votes[index][msg.sender] != true) {
-            votes[index][msg.sender] = true;
+        votes[index][msg.sender] = true;
 
-            _balances[msg.sender] = _balances[msg.sender].sub(amount);
+        _balances[msg.sender] = _balances[msg.sender].sub(amount);
 
-            if (accept) {
-                proposals[index].accept = proposals[index].accept.add(amount);
-            } else {
-                proposals[index].reject = proposals[index].accept.add(amount);
-            }
-            
-            emit Vote(index);
-            emit Transfer(msg.sender, address(0), amount);
+        if (accept) {
+            proposals[index].accept = proposals[index].accept.add(amount);
+        } else {
+            proposals[index].reject = proposals[index].accept.add(amount);
         }
+        
+        emit Vote(index);
+        emit Transfer(msg.sender, address(0), amount);
     }
-
-    // function updateMember(address who, bool isMember) public onlyOwner() {
-    //     require(who != address(0), "Invalid address");
-
-    //     //change state
-    //     if (members[who] != isMember) {
-    //         if (isMember == true) {
-    //             membersCount = membersCount.add(1);
-    //         } else {
-    //             membersCount = membersCount.sub(1);
-    //         }
-    //     }
-
-    //     members[who] = isMember;
-    // }
-
-    // modifier onlyMembers() {
-    //     require(members[msg.sender] == true, "Sender is not a member");
-    //     _;
-    // }
 
     event Vote(uint256 index);
     event Transfer(address indexed from, address indexed to, uint256 value);
