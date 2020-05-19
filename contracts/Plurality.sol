@@ -100,8 +100,7 @@ contract Plurality is Ownable {
         _balances[who] = _balances[who].sub(tokens);
     }
 
-    function canVote(uint index) public view returns (bool) {
-        require(votes[index][msg.sender] != true, "Cannot vote twice");
+    function inVotingPeriod(uint index) public view returns (bool) {
         return proposals[index].expires > now;
     }
 
@@ -115,14 +114,14 @@ contract Plurality is Ownable {
         return proposals.length;
     }
 
-    function vote(uint256 index, bool accept, uint256 amount) public {
-        require(proposals[index].who != msg.sender, "Cannot approve own proposal");
+    function _vote(uint256 index, bool accept, uint256 amount) private {
+        require(proposals[index].who != msg.sender, "Cannot vote on own proposal");
+        require(votes[index][msg.sender] != true, "Cannot vote twice");
         require(balanceOf(msg.sender) >= amount, "Need more tokens");
-        require(canVote(index), "Proposal closed for voting");
+        require(inVotingPeriod(index), "Proposal closed for voting");
         require(amount >= proposals[index].min && proposals[index].max >= amount, "Amount outside the bounds.");
 
         votes[index][msg.sender] = true;
-
         _balances[msg.sender] = _balances[msg.sender].sub(amount);
 
         if (accept) {
@@ -133,6 +132,14 @@ contract Plurality is Ownable {
         
         emit Vote(index);
         emit Transfer(msg.sender, address(0), amount);
+    }
+
+    function accept(uint256 index, uint256 amount) public {
+        _vote(index, true, amount);
+    }
+
+    function reject(uint256 index, uint256 amount) public {
+        _vote(index, false, amount);
     }
 
     event Vote(uint256 index);

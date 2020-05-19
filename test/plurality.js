@@ -11,32 +11,6 @@ contract("Plurality", async (accounts) => {
     beforeEach(async () => {
       contractInstance = await Contract.new();
     });
-  
-    // it("should have two members", async () => {
-    //   await contractInstance.updateMember(ALICE, true);
-
-    //   const actual = await contractInstance.membersCount();
-    //   assert.equal(Number(actual), 2, "Member count should be 2");
-    // });
-
-  //   it("should have three members", async () => {
-  //     await contractInstance.updateMember(ALICE, true);
-  //     await contractInstance.updateMember(BOB, true);
-
-  //     const actual = await contractInstance.membersCount();
-  //     assert.equal(Number(actual), 3, "Member count should be 3");
-  //   });
-
-  //   it.skip("should have two members again", async () => {
-  //       await contractInstance.updateMember(ALICE, true);
-  //       await contractInstance.updateMember(BOB, true);
-  
-  //       let actual = await contractInstance.membersCount();
-  //       assert.equal(Number(actual), 3, "Member count should be 3");
-
-  //       await contractInstance.updateMember(ALICE, false);
-  //       assert.equal(Number(actual), 2, "Member count should be 2");
-  //     });
   });
 
   describe("Vote tests", async () => {
@@ -72,17 +46,67 @@ contract("Plurality", async (accounts) => {
       await contractInstance.addProposal("All the cows are brown");
       await contractInstance.proposals(0);
 
-      const actual = await contractInstance.canVote(0)
+      const actual = await contractInstance.inVotingPeriod(0)
       assert.equal(actual, true, "Proposal should be in vote period");
     });
 
-    it("should be able to vote", async () => {
+    it("should not able to accept own propsal", async () => {
       await contractInstance.grant(ALICE, 100);
       await contractInstance.addProposal("All the cows are brown");
       await contractInstance.proposals(0);
 
-      contractInstance.canVote(0);
+      let actual = await contractInstance.inVotingPeriod(0);
       assert.equal(actual, true, "Proposal should be in vote period");
+
+      try {
+        actual = await contractInstance.accept(0, 1);
+      } catch (error) {
+        assert.equal(error.reason, "Cannot vote on own proposal", `Incorrect revert reason: ${error.reason}`);
+      }
+    });
+
+    it("should not able to reject own propsal", async () => {
+      await contractInstance.grant(ALICE, 100);
+      await contractInstance.addProposal("All the cows are brown");
+      await contractInstance.proposals(0);
+
+      let actual = await contractInstance.inVotingPeriod(0);
+      assert.equal(actual, true, "Proposal should be in vote period");
+
+      try {
+        actual = await contractInstance.reject(0, 1);
+      } catch (error) {
+        assert.equal(error.reason, "Cannot vote on own proposal", `Incorrect revert reason: ${error.reason}`);
+      }
+    });
+
+    it("should not able to accept without enough tokens", async () => {
+      await contractInstance.grant(ALICE, 100);
+      await contractInstance.addProposal("All the cows are brown");
+      await contractInstance.proposals(0);
+
+      let actual = await contractInstance.inVotingPeriod(0);
+      assert.equal(actual, true, "Proposal should be in vote period");
+
+      try {
+        actual = await contractInstance.accept(0, 1, { from: BOB });
+      } catch (error) {
+        assert.equal(error.reason, "Need more tokens", `Incorrect revert reason: ${error.reason}`);
+      }
+    });
+
+    it("should be able to accept propsal", async () => {
+      await contractInstance.grant(ALICE, 100);
+      await contractInstance.grant(BOB, 100);
+      await contractInstance.addProposal("All the cows are brown");
+      await contractInstance.proposals(0);
+
+      await contractInstance.accept(0, 1, { from: BOB });
+
+      const actual = await contractInstance.proposals(0);
+      console.log(actual);
+      assert.equal(actual.accept, 1, "Accept count should be 1");
+      assert.equal(actual.reject, 0, "Reject count should be 0");
     });
   });
 });
